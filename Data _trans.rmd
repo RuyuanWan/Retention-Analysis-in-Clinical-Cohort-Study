@@ -1,0 +1,336 @@
+---
+title: "Data_Transforamtion"
+output: word_document
+---
+```{r setup libraries}
+library(dplyr)
+library(tidyverse)
+```
+
+```{r read_data, echo = FALSE, printMessages = FALSE}
+setwd("C:/Users/respartintern2/OneDrive - The Michael J. Fox Foundation for Parkinson's Research/Ruyuan/Raw Data")
+#upload datasets
+Genetic<-read.csv("./Genetic.csv",header=TRUE)
+Users<-read.csv("./Users.csv",header=TRUE)
+
+returnPD<-read.csv("./ReturnPD.csv")
+returnCTR<-read.csv("./ReturnCTR.csv")
+
+EEQ_alcohol<-read.csv("./EEQ_alcohol.csv")
+EEQ_anti_inflammatory<-read.csv("./EEQ_Anti_Inflammatory_Medication_History.csv")
+EEQ_caffeine<-read.csv("./EEQ_caffeine.csv")
+EEQ_calcium<-read.csv("./EEQ_calcium_channel_blocker_medication_history.csv")
+EEQ_female<-read.csv("./EEQ_female_reproductive_health.csv")
+EEQ_height_weight<-read.csv("./EEQ_height_and_weight.csv")
+EEQ_occupation<-read.csv("./EEQ_occupation.csv")
+EEQ_pesticides<-read.csv("./EEQ_pesticides_at_work.csv")
+EEQ_physical<-read.csv("./EEQ_physical_activity.csv")
+EEQ_residential<-read.csv("./EEQ_residential.csv")
+EEQ_smoking<-read.csv("./EEQ_smoking.csv")
+EEQ_toxicant<-read.csv("./EEQ_toxicant.csv")
+financial_social<-read.csv("./Financial_and_Social_Impact_of_Parkinsons_Disease.csv")
+impact_communication<-read.csv("./Impact_and_Communication_about_OFF_Periods.csv")
+Therapeutic<-read.csv("./Patient_Therapeutic_Preferences_Questionnaire.csv")
+Understanding_OFF_ON<-read.csv("./Understanding_OFF_and_ON_in_Parkinsons_Patients.csv")
+
+Movement<-read.csv("./Movement.csv")
+Nonmovement<-read.csv("./NonMovement.csv")
+About<-read.csv("./About.csv")
+```
+```{r User transform, echo= FALSE}
+Users_transform <- Users %>%
+  mutate(fox_insight_id = as.character(fox_insight_id)) %>%
+  add_column(ltv = 0)
+Users_Transform<-select(Users_transform,c("fox_insight_id","ltv"))
+
+```
+The following code chunk joins the Genetic and the Users table, and then for all users who have Genetic data 10 points are added to LTV.
+
+Known discrepencies in the dataset are identified, and filtered out.
+```{r Genetic 10 points, echo = FALSE}
+#First, join the Users and the Genetic tables together in a temporary DF
+users_genetic <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Genetic$fox_insight_id ~ 10,TRUE ~ 0
+                          )) 
+```
+```{r Output genetics, echo=FALSE}
+write.csv(users_genetic,"LTV_Gene.csv",  row.names = FALSE)
+```
+
+```{r Genetic 1 point, echo= FALSE}
+
+users_genetic_1pt <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Genetic$fox_insight_id ~ 1,TRUE ~ 0
+                          )) 
+
+```
+```{r Output genetics 1pt, echo=FALSE}
+write.csv(users_genetic_1pt,"LTV_Gene_1pt.csv",  row.names = FALSE)
+```
+
+```{r Checking missing: genetic, echo=FALSE}
+#Checking whether all subjects in the Genetic dataset have corresponding demographics data in the Users table
+Genetic_test <- Genetic %>%
+  mutate(id_check = case_when(fox_insight_id %in% Users$fox_insight_id ~ 'TRUE', 
+                              TRUE ~ 'FALSE'))
+```
+
+```{r Count the frequency of return, echo=FALSE}
+#count the frequency of return visit for PD group
+returnPD_points <- returnPD %>%
+    group_by(fox_insight_id) %>%
+    summarise(freq_obs = n())
+#count the frequency of return visit for control group
+returnCTR_points <- returnCTR %>%
+    group_by(fox_insight_id) %>%
+    summarise(freq_obs = n())
+```
+
+```{r Return for PD and CTR, echo=FALSE}
+#Combine PD and healthy control groups 
+# the number of frequency is equal to corresponding points
+return_points<- rbind(returnPD_points,returnCTR_points)
+users_return <- Users_Transform %>%
+  left_join(return_points) %>%
+  select(c("fox_insight_id","freq_obs"))%>%
+   rename(ltv = freq_obs)
+users_return[is.na(users_return)] <- 0
+```
+```{r Output return, echo=FALSE}
+write.csv(users_return,"LTV_Return.csv",  row.names = FALSE)
+```
+
+
+```{r EEQ and one-time substudy,echo=FALSE}
+#EEQ_alcohol
+users_EEQ_alcohol <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_alcohol$fox_insight_id ~ 1,TRUE ~ 0
+                          )) 
+#EEQ_anti_inflammatory
+users_EEQ_anti_inflam <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_anti_inflammatory$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_caffine
+users_EEQ_caffine <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_caffeine$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_calcium
+users_EEQ_calcium <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_calcium$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_female
+users_EEQ_female <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_female$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_height_weight
+users_EEQ_height_weight <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_height_weight$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_occupation
+users_EEQ_occupation <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_occupation$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_pesticides
+users_EEQ_pesticides<- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_pesticides$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_physical
+users_EEQ_physical <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_physical$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_residential
+users_EEQ_residential <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_residential$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_smoking
+users_EEQ_smoking <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_smoking$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#EEQ_toxicant
+users_EEQ_toxicant <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% EEQ_toxicant$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#financial_social
+users_financial_social <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% financial_social$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#impact_communication
+users_impact_comm <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% impact_communication$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#therapeutic
+users_therapeutic<- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Therapeutic$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#understanding_OFF_ON
+users_Off_On <- Users_Transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Understanding_OFF_ON$fox_insight_id ~ 1,TRUE ~ 0
+                          ))
+#add one point for each one-time questionnaire
+users_onetime<-bind_rows (Users_Transform, users_EEQ_alcohol,
+                          users_EEQ_anti_inflam,users_EEQ_caffine, 
+                          users_EEQ_calcium, users_EEQ_female,   
+                          users_EEQ_height_weight, users_EEQ_occupation, 
+                          users_EEQ_pesticides,                         
+                          users_EEQ_physical, users_EEQ_residential, 
+                          users_EEQ_smoking, users_EEQ_toxicant, 
+                          users_financial_social, users_impact_comm, 
+                          users_Off_On,users_therapeutic ) %>%
+                  group_by(fox_insight_id)%>%
+                  summarise_all(sum)
+```
+
+```{r Output Onetime, echo=FALSE}
+write.csv(users_onetime,"LTV_Onetime.csv", row.names = FALSE)
+```
+
+```{r NMS, MDS, Demographics, echo=FALSE}
+#For PD group, only if the participants have all movement, nonmovement, and demographic record at baseline, they will get 1 point 
+PDgroup<- Users_transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Movement$fox_insight_id &
+                         fox_insight_id %in% Nonmovement$fox_insight_id &
+                         fox_insight_id %in% About$fox_insight_id &
+                         InitPDDiag == 1   
+                            ~ 1,TRUE ~ 0 ))
+#For healthy control group, they will get 1 point if the participants have both nonmovement, and demographic record at baseline
+CTRgroup<- Users_transform %>%
+  mutate(ltv = case_when(fox_insight_id %in% Nonmovement$fox_insight_id &
+                         fox_insight_id %in% About$fox_insight_id &
+                         InitPDDiag == 0   
+                            ~ 1,TRUE ~ 0 ))
+#combine PD group and healthy control group
+users_move_demo<-bind_rows (Users_Transform, PDgroup,CTRgroup
+                            ) %>%
+                  select(c("fox_insight_id","ltv"))%>%
+                  group_by(fox_insight_id)%>%
+                  summarise_all(sum)
+```
+
+
+```{r Output Movement/ Nonmovement/ Demographic,echo=FALSE }
+write.csv(users_move_demo,"LTV_Movement_Demographic.csv", row.names = FALSE)
+```
+
+```{r Combine all LTV subsets, echo= FALSE}
+#sum all 4 subgroups together
+Users_Ltv<-bind_rows (users_move_demo, users_genetic,users_onetime, users_return
+                            ) %>%
+                  group_by(fox_insight_id)%>%
+                  summarise_all(sum)
+```
+```{r Output final users LTV, echo= FALSE}
+write.csv(Users_Ltv,"LTV_final.csv",row.names = FALSE )
+```
+
+```{r Combine all LTV subsets with 1 pt for genetic, echo= FALSE}
+#sum all 4 subgroups together
+Users_Ltv_G1<-bind_rows (users_move_demo, users_genetic_1pt,users_onetime, users_return
+                            ) %>%
+                  group_by(fox_insight_id)%>%
+                  summarise_all(sum)
+```
+```{r Output final users LTV, echo= FALSE}
+write.csv(Users_Ltv_G1,"LTV_final_G1pt.csv",row.names = FALSE )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

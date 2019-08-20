@@ -1,0 +1,219 @@
+---
+title: "Descriptive_Stats"
+author: "Ruyuan Wan"
+date: "7/30/2019"
+output: word_document
+---
+```{r, echo= FALSE,message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+
+```
+
+```{r Upload datsets,echo= FALSE,message = FALSE}
+setwd("C:/Users/respartintern2/OneDrive - The Michael J. Fox Foundation for Parkinson's Research/Ruyuan")
+#read datasets
+#Users_LTV<-read.csv("./Transformed Data/LTV_final.csv")
+#Version 2: 1 point for genetic information
+Users_LTV<-read.csv("./Transformed Data/LTV_final_G1pt.csv")
+Users<-read.csv("./Raw Data/Users.csv")
+Users_about<-read.csv("./Raw Data/About.csv")
+
+```
+# 1.a Age: data transformation##
+```{r Age: data transformation, echo=FALSE,message = FALSE}
+#BY age
+LTV_Age<- Users_LTV %>%
+        left_join(Users)%>%
+        mutate(InitPDDiag<- factor(InitPDDiag))
+LTV_18<-LTV_Age%>%
+        filter(age<18)
+LTV_18_34<- LTV_Age %>%
+        filter(age>=18 & age< 34)
+LTV_34_50<- LTV_Age %>%
+        filter(age>=34 & age< 50)
+LTV_50_69<- LTV_Age %>%
+        filter(age>=50 & age< 69)
+LTV_69_87<- LTV_Age %>%
+        filter(age>=69 & age< 87)
+LTV_87<- LTV_Age %>%
+        filter(age>=87)
+LTV_Age_factor <- LTV_Age %>%
+        mutate(Age_group = case_when( age<18 ~ "[0,18)", age>=18 & age< 34 ~ "[18, 34)",
+                                      age>=34 & age< 50 ~ "[34,50)", age>=50 & age< 69 ~ "[50,69)",
+                                      age>=69 & age< 87 ~"[69,87)", age>=87 ~ "age>=87", TRUE ~ "NA"
+        ))%>%
+        slice(-1:-25)
+
+```
+
+# 1.b Age: discriptive statistics
+```{r Age: descriptive statistics, echo=FALSE,message = FALSE}
+ggplot(LTV_Age_factor, aes(x=Age_group, y=ltv)) +
+  geom_boxplot() 
+
+
+mean(LTV_18_34$ltv)
+mean(LTV_34_50$ltv)
+mean(LTV_50_69$ltv)
+mean(LTV_69_87$ltv)
+mean(LTV_87$ltv)
+
+var(LTV_18_34$ltv)
+var(LTV_34_50$ltv)
+var(LTV_50_69$ltv)
+var(LTV_69_87$ltv)
+var(LTV_87$ltv)
+
+quantile(LTV_18_34$ltv)
+quantile(LTV_34_50$ltv)
+quantile(LTV_50_69$ltv)
+quantile(LTV_69_87$ltv)
+quantile(LTV_87$ltv)
+```
+```{r output data, echo=FALSE}
+write.csv(LTV_Age_factor,"LTV_Age_Factor.csv")
+
+```
+
+# 2.a Gender: data transformation
+```{r Gender: data transformation, echo=FALSE,message = FALSE}
+#By sex
+LTV_Sex<-Users_LTV %>%
+        left_join(Users_about)%>%
+        distinct(fox_insight_id,.keep_all = TRUE)%>%
+        mutate(Sex<-factor(Sex))%>%
+        select(c("fox_insight_id","Sex","ltv"))
+LTV_female<-LTV_Sex %>%
+        filter(Sex == 2)%>%
+        select(c("fox_insight_id","Sex","ltv"))
+LTV_male<-LTV_Sex %>%
+        filter(Sex == 1)%>%
+        select(c("fox_insight_id","Sex","ltv"))
+```
+# 2.b Gender: descriptive statistics
+```{r Gender: descriptive statistics, echo=FALSE,message = FALSE}
+mean(LTV_female$ltv)
+mean(LTV_male$ltv)
+
+var(LTV_female$ltv)
+var(LTV_male$ltv)
+
+quantile(LTV_female$ltv)
+quantile(LTV_male$ltv)
+
+LTV_Sex_factor <- LTV_Sex %>%
+        mutate(Sex = case_when(Sex == 1 ~ "male", Sex == 2 ~"female", TRUE ~"NA"))
+        
+ggplot(LTV_Sex_factor, aes(x=Sex, y=ltv)) +
+  geom_boxplot()
+```
+```{r output, echo=FALSE}
+write.csv(LTV_Sex_factor,"LTV_SEX_Factor.csv")
+```
+
+# 3.a Stage of disease: data transformation
+```{r Stage of disease: data transformation, echo= FALSE,message = FALSE }
+
+#stage of disease 
+LTV_disease<- Users_LTV %>%
+           left_join(Users)%>%
+           filter(InitPDDiag== "1" & InitPDDiagAge >= 30)%>%
+           mutate(PDstage = (age-InitPDDiagAge) )#%>%  
+       #    select(c("fox_insight_id","ltv","PDstage","InitPDDiag","age","Ii"))
+
+LTV_disease_2<- LTV_disease%>%  
+           filter(PDstage<=2)%>%
+           select(c("fox_insight_id","ltv","PDstage"))
+
+LTV_disease_2_5<- LTV_disease%>%  
+           filter(PDstage>2 & PDstage <=5 )%>%
+           select(c("fox_insight_id","ltv","PDstage"))
+
+LTV_disease_5_10<- LTV_disease%>%   
+           filter(PDstage>5 & PDstage <=10)%>%
+           select(c("fox_insight_id","ltv","PDstage"))
+
+LTV_disease_10<- LTV_disease%>%  
+           filter(PDstage>10)%>%
+           select(c("fox_insight_id","ltv","PDstage"))
+
+```
+
+# 3.b Stage of disease: descriptive statistics
+```{R Stage of disease: descriptive statistics, echo = FALSE,message = FALSE}
+mean(LTV_disease_2$ltv)
+mean(LTV_disease_2_5$ltv)
+mean(LTV_disease_5_10$ltv)
+mean(LTV_disease_10$ltv)
+
+
+var(LTV_disease_2$ltv)
+var(LTV_disease_2_5$ltv)
+var(LTV_disease_5_10$ltv)
+var(LTV_disease_10$ltv)
+
+quantile(LTV_disease_2$ltv)
+quantile(LTV_disease_2_5$ltv)
+quantile(LTV_disease_5_10$ltv)
+quantile(LTV_disease_10$ltv)
+
+LTV_disease_factor <- LTV_disease %>%
+        mutate(PD_stage_group = case_when(PDstage<=2 ~ "(0,2]",PDstage>2 & PDstage <=5 ~ "(2,5]", 
+                                    PDstage>5 & PDstage <=10 ~ "(5,10]", PDstage>10 ~ "10+",
+                                 TRUE ~ "" ))
+ggplot(LTV_disease_factor, aes(x=PD_stage_group, y=ltv)) +
+  geom_boxplot()
+
+```
+
+
+```{r output, echo= FALSE}
+write.csv(LTV_disease_factor,"LTV_disease_factor.csv")
+```
+The longest stage of disease is 50.8. Participant "FOX_008122" was diagnoed at 40 years old. 
+
+# 4.a  Covariate Relationship: data transformation
+```{r Covariate Relationship: data transformation, echo=FALSE,message = FALSE}
+Users_Age_PDstage<-LTV_disease %>%
+           left_join(LTV_Age)
+Users_Age_Sex <- LTV_Sex %>%
+           left_join(LTV_Age)
+
+Users_PDstage_Sex <- LTV_disease %>%
+           left_join(LTV_Sex)
+Users_PDstage_Sex<-na.omit(Users_PDstage_Sex)
+
+PDstage_male<-Users_PDstage_Sex[which(Users_PDstage_Sex$Sex ==1),]
+PDstage_female<-Users_PDstage_Sex[which(Users_PDstage_Sex$Sex ==2),]
+
+Age_male<-Users_Age_Sex[which(Users_Age_Sex$Sex == 1),]
+Age_female<- Users_Age_Sex[which(Users_Age_Sex$Sex == 2),]
+```
+
+# 4.b Covariate Relationship: correlation test
+```{r Covariate Relationship: correlation test, echo= FALSE,message = FALSE}
+
+cor.test(Users_Age_PDstage$age,Users_Age_PDstage$PDstage)
+
+wilcox.test(PDstage_male$age,PDstage_female$age  )
+
+wilcox.test(Age_male$age,Age_female$age  )
+
+```
+
+There are significant corelation between each two variables between age, sex and stage of disease.  
+
+# 5 Enrollment Time 
+```{r echo=FALSE,message = FALSE}
+#enrollment time
+Users_enrollment<-Users%>%
+        mutate(Engagetime= Users$age - Users$AgeAtEnrollment)
+Users_enrollment<- na.omit(Users_enrollment)
+quantile(Users_enrollment$Engagetime)
+mean(Users_enrollment$Engagetime)
+```
+
+Mean of the time that participants engaged in this study is 0.7631175 year. 
+
