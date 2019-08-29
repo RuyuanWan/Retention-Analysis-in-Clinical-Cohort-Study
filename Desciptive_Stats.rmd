@@ -119,12 +119,16 @@ write.csv(LTV_Sex_factor,"LTV_SEX_Factor.csv")
 #stage of disease 
 LTV_disease<- Users_LTV %>%
            left_join(Users)%>%
-           filter(InitPDDiag== "1" & InitPDDiagAge >= 30)%>%
-           mutate(PDstage = (age-InitPDDiagAge) )#%>%  
+           mutate(PDstage = case_when(InitPDDiag== "1" ~  (age-InitPDDiagAge), TRUE ~ 0 )  )%>% 
+           filter((InitPDDiag =="1"& InitPDDiagAge >20) | (InitPDDiag != 1 ))%>%
+           slice(-1:-25)      
        #    select(c("fox_insight_id","ltv","PDstage","InitPDDiag","age","Ii"))
+LTV_disease_CTR<- LTV_disease%>%  
+           filter(PDstage==0)%>%
+           select(c("fox_insight_id","ltv","PDstage"))
 
 LTV_disease_2<- LTV_disease%>%  
-           filter(PDstage<=2)%>%
+           filter(PDstage> 0 & PDstage<=2 )%>%
            select(c("fox_insight_id","ltv","PDstage"))
 
 LTV_disease_2_5<- LTV_disease%>%  
@@ -136,31 +140,33 @@ LTV_disease_5_10<- LTV_disease%>%
            select(c("fox_insight_id","ltv","PDstage"))
 
 LTV_disease_10<- LTV_disease%>%  
-           filter(PDstage>10)%>%
+           filter(PDstage>10 )%>%
            select(c("fox_insight_id","ltv","PDstage"))
 
 ```
 
 # 3.b Stage of disease: descriptive statistics
 ```{R Stage of disease: descriptive statistics, echo = FALSE,message = FALSE}
+mean(LTV_disease_CTR$ltv)
 mean(LTV_disease_2$ltv)
 mean(LTV_disease_2_5$ltv)
 mean(LTV_disease_5_10$ltv)
 mean(LTV_disease_10$ltv)
 
-
+var(LTV_disease_CTR$ltv)
 var(LTV_disease_2$ltv)
 var(LTV_disease_2_5$ltv)
 var(LTV_disease_5_10$ltv)
 var(LTV_disease_10$ltv)
 
+quantile(LTV_disease_CTR$ltv)
 quantile(LTV_disease_2$ltv)
 quantile(LTV_disease_2_5$ltv)
 quantile(LTV_disease_5_10$ltv)
 quantile(LTV_disease_10$ltv)
 
 LTV_disease_factor <- LTV_disease %>%
-        mutate(PD_stage_group = case_when(PDstage<=2 ~ "(0,2]",PDstage>2 & PDstage <=5 ~ "(2,5]", 
+        mutate(PD_stage_group = case_when(PDstage==0 ~ "healthy control",PDstage>0 & PDstage <=2 ~ "(0,2]",PDstage>2 & PDstage <=5 ~ "(2,5]", 
                                     PDstage>5 & PDstage <=10 ~ "(5,10]", PDstage>10 ~ "10+",
                                  TRUE ~ "" ))
 ggplot(LTV_disease_factor, aes(x=PD_stage_group, y=ltv)) +
@@ -195,11 +201,11 @@ Age_female<- Users_Age_Sex[which(Users_Age_Sex$Sex == 2),]
 # 4.b Covariate Relationship: correlation test
 ```{r Covariate Relationship: correlation test, echo= FALSE,message = FALSE}
 
-cor.test(Users_Age_PDstage$age,Users_Age_PDstage$PDstage)
+cor.test(Users_Age_PDstage$PDstage,Users_Age_PDstage$age,alternative = "greater")
 
-wilcox.test(PDstage_male$age,PDstage_female$age  )
+wilcox.test(PDstage_male$PDstage,PDstage_female$PDstage ,alternative = "greater"  )
 
-wilcox.test(Age_male$age,Age_female$age  )
+wilcox.test(Age_male$age,Age_female$age ,alternative = "greater" )
 
 ```
 

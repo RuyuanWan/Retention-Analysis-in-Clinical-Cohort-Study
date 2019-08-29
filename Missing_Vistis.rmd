@@ -1,0 +1,62 @@
+---
+title: "Missing Visists"
+author: "Ruyuan Wan"
+date: "8/20/2019"
+output: word_document
+---
+
+```{r setup, echo= FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r upload data, echo= FALSE}
+setwd("C:/Users/respartintern2/OneDrive - The Michael J. Fox Foundation for Parkinson's Research/Ruyuan")
+returnPD<- read.csv("./Raw Data/ReturnPD.csv",header = TRUE)
+returnCTR<-read.csv("./Raw Data/ReturnCTR.csv", header = TRUE)
+LTV<-read.csv("./Transformed Data/LTV_final_G1pt.csv", header = TRUE)
+Users<-read.csv("./Raw Data/Users.csv",header=TRUE)
+```
+
+```{r PD group missing visits, echo=FALSE}
+PD_visit_window<-returnPD%>%
+  select("fox_insight_id","age")%>%
+  group_by(fox_insight_id)%>%
+  mutate(diff = as.numeric(age - lag(age)))%>%
+  filter(diff> 0.301)
+  
+Miss_visit<-PD_visit_window%>%
+  group_by(fox_insight_id)%>%
+  summarise(miss = n())
+
+Miss_pattern<-Miss_visit%>%
+  group_by(miss)%>%
+  summarise(participants= n())
+
+#ctr
+
+```
+
+
+```{r CTR group missing visits, echo=FALSE}
+CTR_visit_window<-returnCTR%>%
+  select("fox_insight_id","age")%>%
+  group_by(fox_insight_id)%>%
+  mutate(diff = as.numeric(age - lag(age)))%>%
+  filter(diff> 0.301)
+  
+CTR_Miss_visit<-CTR_visit_window%>%
+  group_by(fox_insight_id)%>%
+  summarise(miss = n())
+
+CTR_Miss_pattern<-CTR_Miss_visit%>%
+  group_by(miss)%>%
+  summarise(participants= n())
+```
+
+
+```{r output, echo= FALSE}
+write.csv(PD_visit_window,"PD_Visit_window.csv")
+```

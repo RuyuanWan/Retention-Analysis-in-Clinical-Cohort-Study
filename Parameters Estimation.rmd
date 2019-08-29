@@ -1,0 +1,204 @@
+---
+title: "Maximum_Likelihood_Expectation"
+author: "Ruyuan Wan"
+date: "8/5/2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(BTYD)
+library(ggplot2)
+library(survival)
+library(survminer)
+```
+
+```{r upload data, echo=FALSE}
+setwd("C:/Users/respartintern2/OneDrive - The Michael J. Fox Foundation for Parkinson's Research/Ruyuan")
+returnPD<- read.csv("./Raw Data/ReturnPD.csv",header = TRUE)
+returnCTR<-read.csv("./Raw Data/ReturnCTR.csv", header = TRUE)
+LTV<-read.csv("./Transformed Data/LTV_final_G1pt.csv", header = TRUE)
+Users<-read.csv("./Raw Data/Users.csv",header=TRUE)
+```
+
+```{r Return frequency, echo = FALSE}
+LTV<-LTV%>%
+   left_join(Users)%>%
+   mutate(group = case_when(InitPDDiag=="1" ~ "PD",TRUE ~"CTR"))%>%
+   select(fox_insight_id,ltv,group)%>%
+   slice(-1:-25)
+
+
+#count the frequency of return visit for PD group
+returnPD_freq <- returnPD %>%
+    group_by(fox_insight_id) %>%
+    summarise(freq_obs = n())
+summary(returnPD_freq)
+
+#count the frequency of return visit for control group
+returnCTR_freq <- returnCTR %>%
+    group_by(fox_insight_id) %>%
+    summarise(freq_obs = n())
+summary(returnCTR_freq)
+```
+
+```{r Recency, echo= False}
+returnCTR_rec <- returnCTR %>%
+    group_by(fox_insight_id) %>%
+    summarise(age = max(age))%>%
+    rename(return_age = age)%>%
+    left_join(Users, by = "fox_insight_id")%>%
+    mutate(rec_obs = return_age - AgeAtEnrollment, agedif = return_age - age)%>%
+    select("fox_insight_id","rec_obs")
+summary(returnCTR_rec)
+
+returnPD_rec <- returnPD %>%
+    group_by(fox_insight_id) %>%
+    summarise(age = max(age))%>%
+    rename(return_age = age)%>%
+    left_join(Users, by = "fox_insight_id")%>%
+    mutate(rec_obs = return_age - AgeAtEnrollment, agedif= return_age - age)%>%
+    filter(rec_obs<5)%>%
+    select("fox_insight_id","rec_obs")
+summary(returnPD_rec)
+```
+
+```{r Reccency & Frequency & Life Time Value, echo = FALSE}
+CTR_rf<- returnCTR_rec%>%
+    left_join(returnCTR_freq)%>%
+    mutate(rec_obs = as.numeric(rec_obs/(90/365)) , group = "CTR" )
+
+PD_rf<- returnPD_rec%>%
+    left_join(returnPD_freq)%>%
+    mutate(rec_obs = as.numeric(rec_obs/(90/365)), group = "PD" )
+
+rf<-rbind(CTR_rf,PD_rf)
+  
+rf_ltv<-LTV%>%
+   left_join(rf)%>%
+   mutate_all(~replace(., is.na(.), 0))
+```
+
+```{r the matrix of recency and frequency, echo=FALSE}
+CTR_freq_rec<-rf_ltv %>%
+    filter(group=="CTR")%>%
+    group_by(freq_obs,rec_obs)%>%
+    summarise(participants = n())%>%
+    filter(participants>20)
+
+PD_freq_rec<-rf_ltv %>%
+    filter(group=="PD")%>%
+    group_by(freq_obs,rec_obs)%>%
+    summarise(participants = n())%>%
+    filter(participants>25)
+```
+```{r CTR group parameters and plots, echo = FALSE}
+return.opp<-17
+CTRrf.matrix<-cbind(x=CTR_freq_rec$freq_obs,t.x=ceiling(CTR_freq_rec$rec_obs),
+                    n.cal=return.opp,custs=CTR_freq_rec$participants)
+CTR_param<-bgbb.EstimateParameters(CTRrf.matrix)
+
+LL <- bgbb.rf.matrix.LL(CTR_param, CTRrf.matrix)
+p.matrix <- c(CTR_param, LL)
+
+for (i in 1:2){
+params <- bgbb.EstimateParameters(CTRrf.matrix, CTR_param);
+LL <- bgbb.rf.matrix.LL(params=params, rf.matrix=CTRrf.matrix);
+p.matrix.row <- c(params, LL);
+p.matrix <- rbind(p.matrix, p.matrix.row);
+}
+
+colnames(p.matrix) <- c("alpha", "beta", "gamma", "delta", "LL");
+rownames(p.matrix) <- 1:3
+#p.matrix
+
+bgbb.PlotFrequencyInCalibration(params, CTRrf.matrix)
+par(mfrow=c(2,1))
+bgbb.PlotTransactionRateHeterogeneity(params)
+bgbb.PlotDropoutRateHeterogeneity(params)
+
+```
+```{r PD group parameters and plots, echo= FALSE}
+PDrf.matrix<- cbind(x=PD_freq_rec$freq_obs,t.x=ceiling(PD_freq_rec$rec_obs),
+                    n.cal=return.opp,custs=PD_freq_rec$participants)
+
+PD_param<-bgbb.EstimateParameters(PDrf.matrix, par.start = c(1, 1, 1, 1), max.param.value = 1000)
+
+LL <- bgbb.rf.matrix.LL(PD_param, PDrf.matrix)
+
+p.matrix <- c(PD_param, LL)
+
+for (i in 1:2){
+params <- bgbb.EstimateParameters(PDrf.matrix, PD_param);
+LL <- bgbb.rf.matrix.LL(params, PDrf.matrix);
+p.matrix.row <- c(params, LL);
+p.matrix <- rbind(p.matrix, p.matrix.row);
+}
+colnames(p.matrix) <- c("alpha", "beta", "gamma", "delta", "LL");
+rownames(p.matrix) <- 1:3;
+#p.matrix;
+
+bgbb.PlotFrequencyInCalibration(params, PDrf.matrix)
+par(mfrow=c(2,1))
+bgbb.PlotTransactionRateHeterogeneity(params)
+bgbb.PlotDropoutRateHeterogeneity(params)
+
+
+```
+
+
+```{r heatmap for Reccency & Frequency & Life Time Value, echo= FALSE}
+ggplot(CTR_rf_ltv, aes(freq_obs, rec_obs )) +
+       geom_tile(aes(fill = ltv), color = "white") +
+       scale_fill_gradient(low = "white", high = "steelblue") +
+       ylab("Recency ") +
+       xlab("Frequency") +
+       theme(legend.title = element_text(size = 10),
+       legend.text = element_text(size = 12),
+       plot.title = element_text(size=16),
+       axis.title=element_text(size=14,face="bold"),
+       axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+ggplot(PD_rf_ltv, aes(freq_obs, rec_obs )) +
+       geom_tile(aes(fill = ltv), color = "white") +
+       scale_fill_gradient(low = "white", high = "steelblue") +
+       ylab("Recency ") +
+       xlab("Frequency") +
+       theme(legend.title = element_text(size = 10),
+       legend.text = element_text(size = 12),
+       plot.title = element_text(size=16),
+       axis.title=element_text(size=14,face="bold"),
+       axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+
+
+```{r survival analysis, echo= False}
+surv_object <- Surv(time = rf_ltv$rec_obs)
+fit1 <- survfit(surv_object ~ rf_ltv$group)
+#summary(fit1)
+ggsurvplot(fit1, data = rf_ltv, pval = TRUE)
+
+
+fit2 <- survfit(surv_object ~ rf_ltv$freq_obs)
+#summary(fit1)
+ggsurvplot(fit2, data = rf_ltv, pval = TRUE)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
